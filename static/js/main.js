@@ -75,12 +75,46 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target === modal) closeModal();
     });
 
+    // Fetch status
+    const fetchStatus = async () => {
+        try {
+            const response = await fetch('/api/status');
+            const data = await response.json();
+            
+            const serverEl = document.getElementById('serverStatus');
+            const esp32El = document.getElementById('esp32Status');
+            
+            if (data.server_status.includes('Online')) {
+                serverEl.innerHTML = `<span class="pulse" style="background-color: #2ecc71;"></span> ${data.server_status}`;
+            } else {
+                serverEl.innerHTML = `<span class="pulse" style="background-color: #e74c3c;"></span> Offline`;
+            }
+            
+            if (data.esp32_cam_status === 'Online') {
+                esp32El.innerHTML = `<span class="pulse" style="background-color: #2ecc71;"></span> ESP32: Online`;
+            } else {
+                esp32El.innerHTML = `<span class="pulse" style="background-color: #e74c3c;"></span> ESP32: Offline`;
+            }
+        } catch (error) {
+            console.error("Error fetching status:", error);
+            document.getElementById('serverStatus').innerHTML = `<span class="pulse" style="background-color: #e74c3c;"></span> Server: Error`;
+            document.getElementById('esp32Status').innerHTML = `<span class="pulse" style="background-color: #e74c3c;"></span> ESP32: Unknown`;
+        }
+    };
+
     // Initial fetch
     fetchHistory();
+    fetchStatus();
 
     // Event listeners
-    refreshBtn.addEventListener('click', fetchHistory);
+    refreshBtn.addEventListener('click', () => {
+        fetchHistory();
+        fetchStatus();
+    });
 
     // Auto refresh every 5 seconds
-    setInterval(fetchHistory, 5000);
+    setInterval(() => {
+        fetchHistory();
+        fetchStatus();
+    }, 5000);
 });
