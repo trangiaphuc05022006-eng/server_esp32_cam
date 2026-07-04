@@ -1,0 +1,16 @@
+# Thư mục môi trường ảo
+.venv/
+venv/
+env/
+__pycache__/
+
+# File database
+history.db
+
+# Thư mục build của ESP32 (nếu có)
+build/
+
+# Các file cấu hình biến môi trường
+.env
+
+static/uploads/
