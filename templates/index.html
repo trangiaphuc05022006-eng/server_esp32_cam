@@ -14,8 +14,9 @@
                 <div class="logo-icon"></div>
                 <h1>Face Scan <span>Dashboard</span></h1>
             </div>
-            <div class="status-indicator">
-                <span class="pulse"></span> System Active
+            <div class="status-indicator" style="display: flex; gap: 15px;">
+                <div id="serverStatus"><span class="pulse" id="serverPulse"></span> Server: Loading...</div>
+                <div id="esp32Status"><span class="pulse" id="esp32Pulse"></span> ESP32: Loading...</div>
             </div>
         </header>
 

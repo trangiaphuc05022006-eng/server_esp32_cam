@@ -8,14 +8,17 @@ from flask import Flask, request, jsonify, render_template
 
 app = Flask(__name__)
 
-# ==================== CẤU HÌNH THÔNG TIN API ====================
+# ==================== API CONFIGURATION ====================
 API_KEY = "TVOlPyMlopjjxFd1KRXVF0e2na6IlIll"
 API_SECRET = "lHmbOhuIjFtqw2mXa5OunKLQ9FHDiAEb"
 FACESET_OUTER_ID = "registered_face"
 AI_API_URL = "https://api-us.faceplusplus.com/facepp/v3/search"
 # ================================================================
 
-# Khởi tạo thư mục và database
+# Track ESP32-CAM last connection time
+last_esp32_ping = None
+
+# Initialize directory and database
 UPLOAD_FOLDER = os.path.join('static', 'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -72,17 +75,41 @@ def get_history():
         })
     return jsonify(history_list)
 
+@app.route('/api/status')
+def get_status():
+    global last_esp32_ping
+    
+    # Check if running on Render (Render sets the RENDER environment variable)
+    is_render = os.environ.get('RENDER') == 'true'
+    server_status = "Online (Render)" if is_render else "Online (Local/Other)"
+    
+    # Check ESP32 status (consider it offline if no request in last 5 minutes)
+    esp32_status = "Offline"
+    if last_esp32_ping:
+        time_since_last_ping = time.time() - last_esp32_ping
+        if time_since_last_ping < 300: # 5 minutes
+            esp32_status = "Online"
+            
+    return jsonify({
+        'server_status': server_status,
+        'esp32_cam_status': esp32_status,
+        'last_esp32_ping': datetime.fromtimestamp(last_esp32_ping).strftime("%Y-%m-%d %H:%M:%S") if last_esp32_ping else "Never"
+    })
+
 @app.route('/api/recognize', methods=['POST'])
 def handle_esp32_request():
+    global last_esp32_ping
+    last_esp32_ping = time.time()
+    
     if 'image' not in request.files:
-        print("Lỗi: ESP32 gửi request nhưng không kèm dữ liệu ảnh.")
+        print("Error: ESP32 sent request but no image data included.")
         return jsonify({'match': False, 'message': 'No image file found'}), 400
     
     file = request.files['image']
     img_bytes = file.read()
-    print(f"Nhận được ảnh từ ESP32-CAM (Kích thước: {len(img_bytes)} bytes). Đang xử lý...")
+    print(f"Received image from ESP32-CAM (Size: {len(img_bytes)} bytes). Processing...")
     
-    # Lưu ảnh xuống ổ đĩa
+    # Save image to disk
     filename = f"capture_{int(time.time())}.jpg"
     filepath = os.path.join(UPLOAD_FOLDER, filename)
     with open(filepath, 'wb') as f:
@@ -100,7 +127,7 @@ def handle_esp32_request():
     }
     
     try:
-        print("Đang gửi ảnh lên Face++ Cloud để phân tích...")
+        print("Sending image to Face++ Cloud for analysis...")
         response = requests.post(AI_API_URL, data=payload, files=files)
         
         if response.status_code == 200:
@@ -108,42 +135,42 @@ def handle_esp32_request():
             
             if 'results' in ai_result and len(ai_result['results']) > 0:
                 highest_confidence = ai_result['results'][0]['confidence']
-                print(f"Kết quả phân tích AI: Độ trùng khớp cao nhất đạt {highest_confidence}%")
+                print(f"AI Analysis Result: Highest match rate is {highest_confidence}%")
                 
                 if highest_confidence > 75.0:
-                    # Lấy user_id từ API (là chuỗi Hex của tên) và giải mã lại thành tên gốc
+                    # Get user_id from API (Hex string of name) and decode back to original name
                     user_id_hex = ai_result['results'][0].get('user_id', '')
-                    person_name = "Chủ nhà"
+                    person_name = "Owner"
                     if user_id_hex:
                         try:
                             person_name = bytes.fromhex(user_id_hex).decode('utf-8')
                         except:
                             person_name = user_id_hex
                     
-                    print(f">>> XÁC THỰC THÀNH CÔNG: Nhận diện thành viên {person_name}! Gửi lệnh mở cửa.")
+                    print(f">>> AUTHENTICATION SUCCESSFUL: Member {person_name} recognized! Sending unlock command.")
                     save_history(web_filepath, 'success', highest_confidence, f'Unlock ({person_name})')
                     return jsonify({'match': True, 'message': 'Unlock'})
                 else:
-                    print(">>> XÁC THỰC THẤT BẠI: Phát hiện người lạ. Cửa tiếp tục khóa.")
-                    save_history(web_filepath, 'failed', highest_confidence, 'Lock (Người lạ)')
+                    print(">>> AUTHENTICATION FAILED: Stranger detected. Door continues to be locked.")
+                    save_history(web_filepath, 'failed', highest_confidence, 'Lock (Stranger)')
                     return jsonify({'match': False, 'message': 'Lock (Stranger)'})
             else:
-                print(">>> CẢNH BÁO: Ảnh chụp không phát hiện ra khuôn mặt nào.")
-                save_history(web_filepath, 'failed', 0, 'Không tìm thấy khuôn mặt')
+                print(">>> WARNING: Captured image detected no face.")
+                save_history(web_filepath, 'failed', 0, 'No face found')
                 return jsonify({'match': False, 'message': 'Lock (No face detected)'})
                 
         else:
-            print(f"Lỗi kết nối Face++ API: Mã phản hồi {response.status_code}")
+            print(f"Face++ API connection error: Response code {response.status_code}")
             print(response.text)
             save_history(web_filepath, 'error', 0, 'API Error')
             return jsonify({'match': False, 'message': 'AI Server Error'}), 500
              
     except Exception as e:
-        print(f"Lỗi hệ thống Server: {str(e)}")
+        print(f"Server system error: {str(e)}")
         save_history(web_filepath, 'error', 0, f'Server Error: {str(e)}')
         return jsonify({'match': False, 'message': f'Server internal error: {str(e)}'}), 500
 
 if __name__ == '__main__':
-    print("=== SERVER TRUNG CHUYỂN AI & WEB DASHBOARD ĐANG CHẠY ===")
+    print("=== AI RELAY SERVER & WEB DASHBOARD RUNNING ===")
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
