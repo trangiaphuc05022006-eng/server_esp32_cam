@@ -3,10 +3,28 @@ import time
 import sys
 import sqlite3
 import requests
+import re
 from datetime import datetime
 from flask import Flask, request, jsonify, render_template
 
 app = Flask(__name__)
+
+def remove_vietnamese_accents(s):
+    s = re.sub(r'[àáạảãâầấậẩẫăằắặẳẵ]', 'a', s)
+    s = re.sub(r'[ÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴ]', 'A', s)
+    s = re.sub(r'[èéẹẻẽêềếệểễ]', 'e', s)
+    s = re.sub(r'[ÈÉẸẺẼÊỀẾỆỂỄ]', 'E', s)
+    s = re.sub(r'[òóọỏõôồốộổỗơờớợởỡ]', 'o', s)
+    s = re.sub(r'[ÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠ]', 'O', s)
+    s = re.sub(r'[ìíịỉĩ]', 'i', s)
+    s = re.sub(r'[ÌÍỊỈĨ]', 'I', s)
+    s = re.sub(r'[ùúụủũưừứựửữ]', 'u', s)
+    s = re.sub(r'[ÙÚỤỦŨƯỪỨỰỬỮ]', 'U', s)
+    s = re.sub(r'[ỳýỵỷỹ]', 'y', s)
+    s = re.sub(r'[ỲÝỴỶỸ]', 'Y', s)
+    s = re.sub(r'[đ]', 'd', s)
+    s = re.sub(r'[Đ]', 'D', s)
+    return s
 
 # ==================== API CONFIGURATION ====================
 API_KEY = "TVOlPyMlopjjxFd1KRXVF0e2na6IlIll"
@@ -83,11 +101,10 @@ def get_status():
     is_render = os.environ.get('RENDER') == 'true'
     server_status = "Online (Render)" if is_render else "Online (Local/Other)"
     
-    # Check ESP32 status (consider it offline if no request in last 5 minutes)
     esp32_status = "Offline"
     if last_esp32_ping:
         time_since_last_ping = time.time() - last_esp32_ping
-        if time_since_last_ping < 300: # 5 minutes
+        if time_since_last_ping < 25: # 25 seconds
             esp32_status = "Online"
             
     return jsonify({
@@ -95,6 +112,12 @@ def get_status():
         'esp32_cam_status': esp32_status,
         'last_esp32_ping': datetime.fromtimestamp(last_esp32_ping).strftime("%Y-%m-%d %H:%M:%S") if last_esp32_ping else "Never"
     })
+
+@app.route('/api/ping', methods=['GET'])
+def handle_ping():
+    global last_esp32_ping
+    last_esp32_ping = time.time()
+    return jsonify({"status": "ok"})
 
 @app.route('/api/recognize', methods=['POST'])
 def handle_esp32_request():
@@ -144,6 +167,7 @@ def handle_esp32_request():
                     if user_id_hex:
                         try:
                             person_name = bytes.fromhex(user_id_hex).decode('utf-8')
+                            person_name = remove_vietnamese_accents(person_name)
                         except:
                             person_name = user_id_hex
                     
