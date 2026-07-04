@@ -7,6 +7,7 @@ import re
 from datetime import datetime
 from flask import Flask, request, jsonify, render_template
 
+
 app = Flask(__name__)
 
 def remove_vietnamese_accents(s):
