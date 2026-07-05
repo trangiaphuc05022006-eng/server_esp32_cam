@@ -1,0 +1,4 @@
+{
+    "sketch": "CameraWebServer1\\CameraWebServer1.ino",
+    "board": "esp32:esp32:esp32cam"
+}

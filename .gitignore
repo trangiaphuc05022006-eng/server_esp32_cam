@@ -14,3 +14,26 @@ build/
 .env
 
 static/uploads/
+
+# Ignore large files and CAD designs
+*.zip
+CAD/
+*.kicad_pcb
+*.kicad_sch
+kicad_dump.txt
+
+# Ignore temporary python scripts
+clear_faceset.py
+dump_nets.py
+dump_u3.py
+extract_nets.py
+extract_pcb.py
+find.py
+find_nets*.py
+get_all_nets*.py
+get_u3_pads.py
+move_files.py
+
+# Ignore temporary image directories
+extracted_faces/
+registered_face/
