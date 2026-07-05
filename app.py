@@ -33,9 +33,8 @@ FACESET_OUTER_ID = "registered_face"
 AI_API_URL = "https://api-us.faceplusplus.com/facepp/v3/search"
 # ================================================================
 
-# Track ESP32-CAM last connection time and IP
+# Track ESP32-CAM last connection time
 last_esp32_ping = None
-esp32_local_ip = None
 
 # Initialize directory and database
 UPLOAD_FOLDER = os.path.join('static', 'uploads')
@@ -73,10 +72,6 @@ def save_history(image_path, status, confidence, message):
 @app.route('/')
 def index():
     return render_template('index.html')
-
-@app.route('/live')
-def live_camera():
-    return render_template('live.html', esp32_ip=esp32_local_ip)
 
 @app.route('/api/history')
 def get_history():
@@ -120,12 +115,9 @@ def get_status():
 
 @app.route('/api/ping', methods=['GET'])
 def handle_ping():
-    global last_esp32_ping, esp32_local_ip
+    global last_esp32_ping
     last_esp32_ping = time.time()
-    ip = request.args.get('local_ip')
-    if ip:
-        esp32_local_ip = ip
-    return jsonify({"status": "ok", "recorded_ip": esp32_local_ip})
+    return jsonify({"status": "ok"})
 
 @app.route('/api/recognize', methods=['POST'])
 def handle_esp32_request():
