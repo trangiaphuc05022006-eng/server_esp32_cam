@@ -4,7 +4,7 @@ import sys
 import sqlite3
 import requests
 import re
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from flask import Flask, request, jsonify, render_template
 
 app = Flask(__name__)
@@ -63,7 +63,8 @@ init_db()
 def save_history(image_path, status, confidence, message):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    vn_tz = timezone(timedelta(hours=7))
+    timestamp = datetime.now(vn_tz).strftime("%Y-%m-%d %H:%M:%S")
     c.execute('INSERT INTO scan_history (timestamp, image_path, status, confidence, message) VALUES (?, ?, ?, ?, ?)',
               (timestamp, image_path, status, confidence, message))
     conn.commit()
@@ -107,10 +108,13 @@ def get_status():
         if time_since_last_ping < 25: # 25 seconds
             esp32_status = "Online"
             
+    vn_tz = timezone(timedelta(hours=7))
+    last_ping_str = datetime.fromtimestamp(last_esp32_ping, vn_tz).strftime("%Y-%m-%d %H:%M:%S") if last_esp32_ping else "Never"
+            
     return jsonify({
         'server_status': server_status,
         'esp32_cam_status': esp32_status,
-        'last_esp32_ping': datetime.fromtimestamp(last_esp32_ping).strftime("%Y-%m-%d %H:%M:%S") if last_esp32_ping else "Never"
+        'last_esp32_ping': last_ping_str
     })
 
 @app.route('/api/ping', methods=['GET'])
