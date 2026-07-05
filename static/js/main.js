@@ -8,6 +8,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalCaption = document.getElementById('modalCaption');
     const closeBtn = document.querySelector('.close-btn');
 
+    // Cache to prevent UI jitter on unchanged data
+    let lastHistoryJson = "";
+
     // Fetch history from API
     const fetchHistory = async () => {
         try {
@@ -15,7 +18,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch('/api/history');
             const data = await response.json();
             
-            renderHistory(data);
+            const currentHistoryJson = JSON.stringify(data);
+            if (currentHistoryJson !== lastHistoryJson) {
+                renderHistory(data);
+                lastHistoryJson = currentHistoryJson;
+            }
         } catch (error) {
             console.error("Error fetching history:", error);
             historyBody.innerHTML = `<tr><td colspan="6" class="text-center loading-text error">Failed to load data. Ensure server is running.</td></tr>`;
@@ -48,6 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${item.timestamp}</td>
                 <td>
                     <img src="${item.image_path}" class="thumb" alt="Scan" 
+                         onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\\'http://www.w3.org/2000/svg\\\' width=\\\'60\\\' height=\\\'45\\\'><rect width=\\\'60\\\' height=\\\'45\\\' fill=\\\'#333\\\'/><text x=\\\'30\\\' y=\\\'27\\\' fill=\\\'#fff\\\' font-size=\\\'10\\\' text-anchor=\\\'middle\\\'>No Img</text></svg>'"
                          onclick="openModal('${item.image_path}', '${item.message} - Confidence: ${confidenceStr}')">
                 </td>
                 <td><span class="badge ${badgeClass}">${item.status}</span></td>
