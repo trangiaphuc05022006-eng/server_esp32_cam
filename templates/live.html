@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32-CAM Live Camera</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon"></div>
+                <h1>Face Scan <span>Dashboard</span></h1>
+            </div>
+            <div class="status-indicator" style="display: flex; gap: 15px;">
+                <div id="serverStatus"><span class="pulse" id="serverPulse"></span> Server: Loading...</div>
+                <div id="esp32Status"><span class="pulse" id="esp32Pulse"></span> ESP32: Loading...</div>
+            </div>
+        </header>
+
+        <nav class="nav-menu">
+            <a href="/" class="nav-link">History Log</a>
+            <a href="/live" class="nav-link active">Live Camera</a>
+        </nav>
+
+        <main class="main-content">
+            <div class="card glass">
+                <div class="card-header">
+                    <h2>Live Stream</h2>
+                    <span class="badge success" style="background: rgba(59, 130, 246, 0.1); color: var(--accent-color); border-color: rgba(59, 130, 246, 0.2);">LAN Only</span>
+                </div>
+                
+                <div class="stream-container">
+                    <div class="stream-fallback">
+                        <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                            <circle cx="12" cy="13" r="4"></circle>
+                            <line x1="2" y1="2" x2="22" y2="22"></line>
+                        </svg>
+                        <h3>Camera Unreachable</h3>
+                        <p>Make sure you are connected to the same Wi-Fi network as the ESP32-CAM.</p>
+                        {% if esp32_ip %}
+                        <p style="margin-top: 10px; font-size: 0.8rem;">Trying to connect to: <strong>http://{{ esp32_ip }}:81/stream</strong></p>
+                        {% else %}
+                        <p style="margin-top: 10px; font-size: 0.8rem; color: #f59e0b;">Waiting for ESP32-CAM to report its IP...</p>
+                        {% endif %}
+                    </div>
+                    {% if esp32_ip %}
+                    <img src="http://{{ esp32_ip }}:81/stream" alt="Live Stream" class="stream-player" onerror="this.style.display='none'">
+                    {% endif %}
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
