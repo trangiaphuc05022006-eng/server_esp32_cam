@@ -71,6 +71,26 @@ def save_history(image_path, status, confidence, message):
 def index():
     return render_template('index.html')
 
+@app.route('/api/history')
+def get_history():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('SELECT * FROM scan_history ORDER BY id DESC LIMIT 50')
+    rows = c.fetchall()
+    conn.close()
+    history_list = []
+    for row in rows:
+        history_list.append({'id': row[0], 'timestamp': row[1], 'image_path': row[2], 'status': row[3], 'confidence': row[4], 'message': row[5]})
+    return jsonify(history_list)
+
+@app.route('/api/status')
+def get_status():
+    global last_esp32_ping
+    esp32_status = "Offline"
+    if last_esp32_ping and (time.time() - last_esp32_ping < 30):
+        esp32_status = "Online"
+    return jsonify({'server_status': 'Online', 'esp32_cam_status': esp32_status})
+
 @app.route('/api/ping', methods=['GET'])
 def handle_ping():
     global last_esp32_ping
@@ -87,21 +107,17 @@ def handle_esp32_request():
     
     file = request.files['image']
     img_bytes = file.read()
-    
-    # Lưu ảnh
     filename = f"capture_{int(time.time())}.jpg"
     filepath = os.path.join(UPLOAD_FOLDER, filename)
     with open(filepath, 'wb') as f:
         f.write(img_bytes)
     web_filepath = f"/{UPLOAD_FOLDER}/{filename}".replace('\\', '/')
     
-    # Gửi sang Face++
     payload = {'api_key': API_KEY, 'api_secret': API_SECRET, 'outer_id': FACESET_OUTER_ID}
     files = {'image_file': img_bytes}
     
     try:
         response = requests.post(AI_API_URL, data=payload, files=files)
-        
         if response.status_code == 200:
             ai_result = response.json()
             if 'results' in ai_result and len(ai_result['results']) > 0:
@@ -121,8 +137,7 @@ def handle_esp32_request():
                 save_history(web_filepath, 'failed', 0, 'No face')
                 return jsonify({'match': False, 'message': 'Lock: No face'})
         else:
-            # PHẦN ĐÃ SỬA: Lấy thông tin lỗi từ Face++ trả về
-            error_text = response.text[:25] # Giới hạn ký tự để hiển thị vừa LCD
+            error_text = response.text[:25]
             save_history(web_filepath, 'error', 0, f'API: {error_text}')
             return jsonify({'match': False, 'message': error_text}), 500
              
