@@ -10,10 +10,27 @@ FACESET_OUTER_ID = "registered_face" # Tên nhóm ảnh
 
 REGISTERED_DIR = "registered_face"
 
+def safe_post(url, data=None, files=None, max_retries=3):
+    for attempt in range(max_retries):
+        try:
+            res = requests.post(url, data=data, files=files, timeout=10)
+            if res.status_code == 200:
+                return res
+            elif res.status_code == 403:
+                # Rate limit or quota exceeded
+                print(f"Lỗi 403 (Có thể quá giới hạn API), thử lại sau 3s... Lần {attempt+1}")
+                time.sleep(3)
+            else:
+                return res
+        except Exception as e:
+            print(f"Lỗi kết nối ({e}), đang thử lại... Lần {attempt+1}")
+            time.sleep(2)
+    return None
+
 # Tạo một FaceSet (Album) mới trên Cloud Face++
 print("Đang tạo hoặc kiểm tra album FaceSet trên Cloud...")
 create_url = "https://api-us.faceplusplus.com/facepp/v3/faceset/create"
-requests.post(create_url, data={
+safe_post(create_url, data={
     'api_key': API_KEY,
     'api_secret': API_SECRET,
     'outer_id': FACESET_OUTER_ID,
@@ -57,22 +74,22 @@ for person_name in os.listdir(REGISTERED_DIR):
                 
                 with open(img_path, "rb") as img_file:
                     # 1. Phát hiện khuôn mặt và lấy token
-                    response = requests.post(detect_url, data={'api_key': API_KEY, 'api_secret': API_SECRET}, files={'image_file': img_file})
+                    response = safe_post(detect_url, data={'api_key': API_KEY, 'api_secret': API_SECRET}, files={'image_file': img_file})
                     
-                    if response.status_code == 200:
+                    if response and response.status_code == 200:
                         data = response.json()
                         if len(data.get('faces', [])) > 0:
                             token = data['faces'][0]['face_token']
                             
                             # 2. Gán mã hex_user_id (tên thành viên) vào khuôn mặt này
-                            user_res = requests.post(setuserid_url, data={
+                            user_res = safe_post(setuserid_url, data={
                                 'api_key': API_KEY,
                                 'api_secret': API_SECRET,
                                 'face_token': token,
                                 'user_id': hex_user_id
                             })
                             
-                            if user_res.status_code == 200:
+                            if user_res and user_res.status_code == 200:
                                 face_tokens_list.append(token)
                                 print(f"  + Thành công: {file_name} -> Nhận dạng là {person_name}")
                             else:
@@ -95,14 +112,14 @@ if face_tokens_list:
         chunk = face_tokens_list[i:i + chunk_size]
         tokens_str = ",".join(chunk)
         
-        add_res = requests.post(add_url, data={
+        add_res = safe_post(add_url, data={
             'api_key': API_KEY,
             'api_secret': API_SECRET,
             'outer_id': FACESET_OUTER_ID,
             'face_tokens': tokens_str
         })
         
-        if add_res.status_code == 200:
+        if add_res and add_res.status_code == 200:
             success_count += len(chunk)
             print(f" Đã thêm nhóm {len(chunk)} khuôn mặt vào Album...")
         else:
