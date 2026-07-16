@@ -60,6 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </td>
                 <td><span class="badge ${badgeClass}">${item.status}</span></td>
                 <td>${confidenceStr}</td>
+                <td>${item.latency ? item.latency + 'ms' : '-'}</td>
                 <td>${item.message}</td>
             `;
             historyBody.appendChild(tr);
@@ -86,16 +87,20 @@ document.addEventListener('DOMContentLoaded', () => {
     // Fetch status
     const fetchStatus = async () => {
         try {
+            const startTime = performance.now();
             const response = await fetch('/api/status');
+            const endTime = performance.now();
+            const latencyMs = Math.round(endTime - startTime);
+            
             const data = await response.json();
             
             const serverEl = document.getElementById('serverStatus');
             const esp32El = document.getElementById('esp32Status');
             
             if (data.server_status.includes('Online')) {
-                serverEl.innerHTML = `<span class="pulse" style="background-color: #2ecc71;"></span> ${data.server_status}`;
+                serverEl.innerHTML = `<span class="pulse" style="background-color: #2ecc71;"></span> Server: ${data.server_status} (${latencyMs}ms)`;
             } else {
-                serverEl.innerHTML = `<span class="pulse" style="background-color: #e74c3c;"></span> Offline`;
+                serverEl.innerHTML = `<span class="pulse" style="background-color: #e74c3c;"></span> Server: Offline`;
             }
             
             if (data.esp32_cam_status === 'Online') {
