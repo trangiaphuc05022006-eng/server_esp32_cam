@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const historyBody = document.getElementById('historyBody');
     const refreshBtn = document.getElementById('refreshBtn');
+    const dateFilter = document.getElementById('dateFilter');
     
     // Modal elements
     const modal = document.getElementById('imageModal');
@@ -15,7 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const fetchHistory = async () => {
         try {
             refreshBtn.style.opacity = '0.5';
-            const response = await fetch('/api/history');
+            const dateQuery = dateFilter.value ? `?date=${dateFilter.value}` : '';
+            const response = await fetch(`/api/history${dateQuery}`);
             const data = await response.json();
             
             const currentHistoryJson = JSON.stringify(data);
@@ -115,12 +117,42 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // Fetch Dates
+    const fetchDates = async () => {
+        try {
+            const response = await fetch('/api/history/dates');
+            const dates = await response.json();
+            
+            // Keep current selection
+            const currentSelection = dateFilter.value;
+            
+            let html = '<option value="">All Days</option>';
+            dates.forEach(date => {
+                html += `<option value="${date}">${date}</option>`;
+            });
+            dateFilter.innerHTML = html;
+            
+            if (dates.includes(currentSelection)) {
+                dateFilter.value = currentSelection;
+            }
+        } catch (error) {
+            console.error("Error fetching dates:", error);
+        }
+    };
+
     // Initial fetch
+    fetchDates();
     fetchHistory();
     fetchStatus();
 
     // Event listeners
+    dateFilter.addEventListener('change', () => {
+        lastHistoryJson = ""; // Force re-render
+        fetchHistory();
+    });
+
     refreshBtn.addEventListener('click', () => {
+        fetchDates();
         fetchHistory();
         fetchStatus();
     });
