@@ -3,6 +3,8 @@ import time
 import sqlite3
 import requests
 import re
+import pymongo
+from supabase import create_client, Client
 from datetime import datetime, timedelta, timezone
 from flask import Flask, request, jsonify, render_template
 
@@ -14,34 +16,21 @@ API_SECRET = "lHmbOhuIjFtqw2mXa5OunKLQ9FHDiAEb"
 FACESET_OUTER_ID = "registered_face"
 AI_API_URL = "https://api-us.faceplusplus.com/facepp/v3/search"
 
+# ==================== KẾT NỐI DB & STORAGE ====================
+# MongoDB
+MONGO_URI = "mongodb+srv://trangiaphuc05022006_db_user:aimabiet123@esp32cam.xbh8hsn.mongodb.net/?appName=ESP32CAM"
+mongo_client = pymongo.MongoClient(MONGO_URI)
+db = mongo_client["esp32cam_db"]
+history_collection = db["scan_history"]
+
+# Supabase
+SUPABASE_URL = "https://fydailqktdhjtxxvsbum.supabase.co"
+SUPABASE_KEY = "sb_publishable_uQRNrQvF6kXcio8aqlb8Jg_dT0j46xA"
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+SUPABASE_BUCKET = "images"  # Bạn cần tạo bucket tên "images" và set là Public trên Supabase
+
 # ==================== KHỞI TẠO ====================
-UPLOAD_FOLDER = os.path.join('static', 'uploads')
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-DB_FILE = 'history.db'
 last_esp32_ping = None
-
-def init_db():
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS scan_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp TEXT,
-            image_path TEXT,
-            status TEXT,
-            confidence REAL,
-            message TEXT,
-            latency INTEGER DEFAULT 0
-        )
-    ''')
-    try:
-        c.execute('ALTER TABLE scan_history ADD COLUMN latency INTEGER DEFAULT 0')
-    except sqlite3.OperationalError:
-        pass # Column already exists
-    conn.commit()
-    conn.close()
-
-init_db()
 
 def remove_vietnamese_accents(s):
     s = re.sub(r'[àáạảãâầấậẩẫăằắặẳẵ]', 'a', s)
@@ -61,14 +50,20 @@ def remove_vietnamese_accents(s):
     return s
 
 def save_history(image_path, status, confidence, message, latency=0):
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
     vn_tz = timezone(timedelta(hours=7))
-    timestamp = datetime.now(vn_tz).strftime("%Y-%m-%d %H:%M:%S")
-    c.execute('INSERT INTO scan_history (timestamp, image_path, status, confidence, message, latency) VALUES (?, ?, ?, ?, ?, ?)',
-              (timestamp, image_path, status, confidence, message, latency))
-    conn.commit()
-    conn.close()
+    timestamp = datetime.now(vn_tz)
+    
+    # Lưu vào MongoDB
+    record = {
+        "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+        "date": timestamp.strftime("%Y-%m-%d"), # Lưu thêm trường date để tiện query
+        "image_path": image_path,
+        "status": status,
+        "confidence": confidence,
+        "message": message,
+        "latency": latency
+    }
+    history_collection.insert_one(record)
 
 # ==================== ROUTES ====================
 
@@ -78,23 +73,34 @@ def index():
 
 @app.route('/api/history')
 def get_history():
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute('SELECT * FROM scan_history ORDER BY id DESC LIMIT 50')
-    rows = c.fetchall()
-    conn.close()
+    selected_date = request.args.get('date')
+    query = {}
+    if selected_date:
+        query = {"date": selected_date}
+    
+    # Lấy 50 record mới nhất của ngày đó (hoặc tất cả nếu ko truyền)
+    records = list(history_collection.find(query).sort("_id", -1).limit(50))
+    
     history_list = []
-    for row in rows:
+    for row in records:
         history_list.append({
-            'id': row[0], 
-            'timestamp': row[1], 
-            'image_path': row[2], 
-            'status': row[3], 
-            'confidence': row[4], 
-            'message': row[5],
-            'latency': row[6] if len(row) > 6 else 0
+            'id': str(row['_id']), 
+            'timestamp': row['timestamp'], 
+            'image_path': row['image_path'], 
+            'status': row['status'], 
+            'confidence': row['confidence'], 
+            'message': row['message'],
+            'latency': row.get('latency', 0)
         })
     return jsonify(history_list)
+
+@app.route('/api/history/dates')
+def get_history_dates():
+    # Lấy danh sách các ngày đã có log (distinct date)
+    dates = history_collection.distinct("date")
+    # Sắp xếp giảm dần (ngày mới nhất lên đầu)
+    dates.sort(reverse=True)
+    return jsonify(dates)
 
 @app.route('/api/status')
 def get_status():
@@ -122,11 +128,16 @@ def handle_esp32_request():
     file = request.files['image']
     img_bytes = file.read()
     filename = f"capture_{int(time.time())}.jpg"
-    filepath = os.path.join(UPLOAD_FOLDER, filename)
-    with open(filepath, 'wb') as f:
-        f.write(img_bytes)
-    web_filepath = f"/{UPLOAD_FOLDER}/{filename}".replace('\\', '/')
     
+    # Đẩy ảnh lên Supabase Storage
+    try:
+        supabase.storage.from_(SUPABASE_BUCKET).upload(filename, img_bytes, {"content-type": "image/jpeg"})
+        web_filepath = supabase.storage.from_(SUPABASE_BUCKET).get_public_url(filename)
+    except Exception as e:
+        print("Lỗi upload ảnh Supabase:", e)
+        # Fallback lại URL trống nếu lỗi để không chết cả ứng dụng
+        web_filepath = ""
+
     payload = {'api_key': API_KEY, 'api_secret': API_SECRET, 'outer_id': FACESET_OUTER_ID}
     files = {'image_file': img_bytes}
     
