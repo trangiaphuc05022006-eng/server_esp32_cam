@@ -25,7 +25,7 @@ history_collection = db["scan_history"]
 
 # Supabase
 SUPABASE_URL = "https://fydailqktdhjtxxvsbum.supabase.co"
-SUPABASE_KEY = "sb_publishable_uQRNrQvF6kXcio8aqlb8Jg_dT0j46xA"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ5ZGFpbHFrdGRoanR4eHZzYnVtIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDI2NjA4NywiZXhwIjoyMDk5ODQyMDg3fQ.JnaEAZ6rX9qjvBy5VLGpvc5L4ceRLEkssy1U-64lu08"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 SUPABASE_BUCKET = "images"  # Bạn cần tạo bucket tên "images" và set là Public trên Supabase
 
