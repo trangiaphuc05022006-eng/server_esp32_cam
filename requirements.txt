@@ -4,3 +4,4 @@ requests
 gunicorn
 pymongo
 supabase
+python-dotenv

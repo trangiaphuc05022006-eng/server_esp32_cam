@@ -4,30 +4,49 @@ import sqlite3
 import requests
 import re
 import pymongo
+
 from supabase import create_client, Client
 from datetime import datetime, timedelta, timezone
 from flask import Flask, request, jsonify, render_template
+from dotenv import load_dotenv
+load_dotenv()
 
 app = Flask(__name__)
 
+
 # ==================== CẤU HÌNH API ====================
-API_KEY = "[REDACTED]"
-API_SECRET = "[REDACTED]"
+
+API_KEY = [REDACTED]
+API_SECRET = [REDACTED]
+
 FACESET_OUTER_ID = "registered_face"
 AI_API_URL = "https://api-us.faceplusplus.com/facepp/v3/search"
 
+
 # ==================== KẾT NỐI DB & STORAGE ====================
+
 # MongoDB
-MONGO_URI = "[REDACTED]"
+MONGO_URI = [REDACTED]
+
+if not MONGO_URI:
+    raise RuntimeError("Thiếu biến môi trường MONGO_URI")
+
 mongo_client = pymongo.MongoClient(MONGO_URI)
 db = mongo_client["esp32cam_db"]
 history_collection = db["scan_history"]
 
+
 # Supabase
-SUPABASE_URL = "[REDACTED]"
-SUPABASE_KEY = "[REDACTED]"
+SUPABASE_URL = [REDACTED]
+SUPABASE_KEY = [REDACTED]
+
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise RuntimeError("Thiếu biến môi trường SUPABASE_URL hoặc SUPABASE_KEY")
+
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-SUPABASE_BUCKET = "images"  # Bạn cần tạo bucket tên "images" và set là Public trên Supabase
+
+SUPABASE_BUCKET = "images"
+
 
 # ==================== KHỞI TẠO ====================
 last_esp32_ping = None

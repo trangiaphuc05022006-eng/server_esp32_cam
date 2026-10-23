@@ -4,8 +4,15 @@ import time
 from PIL import Image
 
 # Điền thông tin API của bạn
-API_KEY = "[REDACTED]"
-API_SECRET = "[REDACTED]"
+from dotenv import load_dotenv
+
+load_dotenv()
+
+API_KEY = [REDACTED]
+API_SECRET = [REDACTED]
+
+if not API_KEY or not API_SECRET:
+    raise RuntimeError("Thiếu biến môi trường FACE_API_KEY hoặc FACE_API_SECRET")
 FACESET_OUTER_ID = "registered_face" # Tên nhóm ảnh
 
 REGISTERED_DIR = "registered_face"
