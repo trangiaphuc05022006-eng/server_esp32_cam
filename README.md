@@ -17,8 +17,7 @@ The backend also records recognition events and provides API endpoints for viewi
 
 ## System Architecture
 
-![System Architecture](docs/block_diagram_draw.pdf)
-
+![System Architecture](docs/system-architecture.png)
 Additional backend services:
 - MongoDB: Recognition history and event metadata
 - Supabase Storage: Uploaded image storage
