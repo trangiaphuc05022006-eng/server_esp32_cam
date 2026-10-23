@@ -8,8 +8,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-API_KEY = [REDACTED]
-API_SECRET = [REDACTED]
+API_KEY = os.environ.get("FACE_API_KEY")
+API_SECRET = os.environ.get("FACE_API_SECRET")
 
 if not API_KEY or not API_SECRET:
     raise RuntimeError("Thiếu biến môi trường FACE_API_KEY hoặc FACE_API_SECRET")

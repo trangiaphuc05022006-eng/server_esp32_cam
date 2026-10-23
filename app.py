@@ -16,8 +16,8 @@ app = Flask(__name__)
 
 # ==================== CẤU HÌNH API ====================
 
-API_KEY = [REDACTED]
-API_SECRET = [REDACTED]
+API_KEY = os.environ.get("FACE_API_KEY")
+API_SECRET = os.environ.get("FACE_API_SECRET")
 
 FACESET_OUTER_ID = "registered_face"
 AI_API_URL = "https://api-us.faceplusplus.com/facepp/v3/search"
@@ -26,7 +26,7 @@ AI_API_URL = "https://api-us.faceplusplus.com/facepp/v3/search"
 # ==================== KẾT NỐI DB & STORAGE ====================
 
 # MongoDB
-MONGO_URI = [REDACTED]
+MONGO_URI = os.environ.get("MONGO_URI")
 
 if not MONGO_URI:
     raise RuntimeError("Thiếu biến môi trường MONGO_URI")
@@ -37,8 +37,8 @@ history_collection = db["scan_history"]
 
 
 # Supabase
-SUPABASE_URL = [REDACTED]
-SUPABASE_KEY = [REDACTED]
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     raise RuntimeError("Thiếu biến môi trường SUPABASE_URL hoặc SUPABASE_KEY")
