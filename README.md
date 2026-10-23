@@ -15,35 +15,9 @@ The ESP32-CAM captures images and communicates with a Flask backend hosted on Re
 
 The backend also records recognition events and provides API endpoints for viewing scan history and monitoring system status.
 
-## 2. System Architecture
+## System Architecture
 
-```text
-Light Sensor (LDR)
-        |
-        v
-   ESP32-CAM
-   Capture Image
-        |
-        | HTTPS / Multipart Image Upload
-        v
- Flask Backend on Render
-        |
-        v
-   Face++ API
-  Face Recognition
-        |
-        v
-  Matching Result
-        |
-        | JSON Response
-        v
-   ESP32-CAM
-        |
-        +---- Match ----> Relay ----> Solenoid Lock
-        |
-        +---- No Match -> Keep Lock Unchanged
-        |
-        +---- Error ----> Display Error / Retry Cycle
+![System Architecture](docs/block_diagram.pdf)
 
 Additional backend services:
 - MongoDB: Recognition history and event metadata
