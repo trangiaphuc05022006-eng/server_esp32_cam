@@ -17,7 +17,7 @@ The backend also records recognition events and provides API endpoints for viewi
 
 ## System Architecture
 
-![System Architecture](docs/block_diagram.pdf)
+![System Architecture](docs/block_diagram_draw.pdf)
 
 Additional backend services:
 - MongoDB: Recognition history and event metadata
